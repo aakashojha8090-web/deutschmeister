@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeutschMitAakash - AI German Tutor</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #FFD93D; --orange: #FF6B35; --blue: #4ECDC4;
+    --purple: #A855F7; --green: #06D6A0; --pink: #FF6B9D;
+    --dark: #1a1a2e; --card: #16213e; --text: #e2e8f0; --muted: #94a3b8;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Nunito',sans-serif; background:var(--dark); color:var(--text); min-height:100vh; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background:radial-gradient(ellipse at 20% 20%,rgba(78,205,196,0.08) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(168,85,247,0.08) 0%,transparent 50%); pointer-events:none; z-index:0; }
+  nav { position:sticky; top:0; z-index:100; background:rgba(26,26,46,0.95); backdrop-filter:blur(20px); border-bottom:2px solid rgba(78,205,196,0.2); padding:0 1rem; display:flex; align-items:center; justify-content:space-between; height:60px; }
+  .logo { font-family:'Baloo 2',cursive; font-size:1.4rem; font-weight:800; background:linear-gradient(135deg,var(--yellow),var(--orange)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .nav-tabs { display:flex; gap:2px; overflow-x:auto; }
+  .nav-tab { padding:6px 12px; border-radius:50px; border:none; cursor:pointer; font-family:'Nunito',sans-serif; font-weight:700; font-size:0.78rem; background:transparent; color:var(--muted); transition:all 0.2s; white-space:nowrap; }
+  .nav-tab:hover { color:var(--text); background:rgba(255,255,255,0.05); }
+  .nav-tab.active { background:linear-gradient(135deg,var(--blue),var(--purple)); color:white; }
+  .level-badge { background:linear-gradient(135deg,var(--green),var(--blue)); color:var(--dark); padding:4px 10px; border-radius:50px; font-weight:800; font-size:0.75rem; flex-shrink:0; }
+  main { position:relative; z-index:1; }
+  .section { display:none; padding:1.2rem; max-width:900px; margin:0 auto; }
+  .section.active { display:block; animation:fadeIn 0.4s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  /* CHAT */
+  .chat-box { background:var(--card); border:2px solid rgba(78,205,196,0.15); border-radius:20px; overflow:hidden; margin-top:1rem; }
+  .chat-header { padding:0.8rem 1.2rem; background:linear-gradient(135deg,rgba(78,205,196,0.15),rgba(168,85,247,0.15)); border-bottom:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:8px; }
+  .chat-dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:blink 2s infinite; }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.4}}
+  .chat-messages { height:380px; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:10px; scrollbar-width:thin; }
+  .msg { max-width:85%; padding:10px 14px; border-radius:16px; font-size:0.9rem; line-height:1.6; animation:msgIn 0.3s ease; }
+  @keyframes msgIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+  .msg.bot { background:linear-gradient(135deg,rgba(78,205,196,0.12),rgba(78,205,196,0.06)); border:1px solid rgba(78,205,196,0.2); border-bottom-left-radius:4px; align-self:flex-start; }
+  .msg.user { background:linear-gradient(135deg,var(--purple),#7c3aed); border-bottom-right-radius:4px; align-self:flex-end; color:white; }
+  .msg-label { font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px; color:var(--blue); }
+  .msg.user .msg-label { color:rgba(255,255,255,0.7); }
+  .typing { display:flex; gap:4px; align-items:center; padding:4px 0; }
+  .typing span { width:7px; height:7px; border-radius:50%; background:var(--blue); animation:typing 1.2s ease-in-out infinite; }
+  .typing span:nth-child(2){animation-delay:0.2s} .typing span:nth-child(3){animation-delay:0.4s}
+  @keyframes typing{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-7px)}}
+  .chat-input-area { padding:0.8rem 1rem; border-top:1px solid rgba(255,255,255,0.08); display:flex; gap:8px; }
+  .chat-input { flex:1; background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.1); border-radius:50px; padding:10px 16px; color:var(--text); font-family:'Nunito',sans-serif; font-size:0.9rem; outline:none; transition:border-color 0.2s; }
+  .chat-input:focus { border-color:var(--blue); }
+  .chat-input::placeholder { color:var(--muted); }
+  .send-btn { width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,var(--blue),var(--purple)); border:none; cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center; transition:transform 0.2s; }
+  .send-btn:hover { transform:scale(1.1); }
+  .quick-prompts { padding:0 1rem 0.8rem; display:flex; gap:6px; flex-wrap:wrap; }
+  .quick-btn { padding:5px 12px; border-radius:50px; border:1.5px solid rgba(255,215,61,0.3); background:rgba(255,215,61,0.05); color:var(--yellow); font-size:0.75rem; font-weight:700; cursor:pointer; transition:all 0.2s; font-family:'Nunito',sans-serif; }
+  .quick-btn:hover { background:rgba(255,215,61,0.15); }
+
+  /* AVATAR CARD */
+  .avatar-section { display:grid; grid-template-columns:280px 1fr; gap:1.2rem; align-items:start; }
+  .avatar-card { background:var(--card); border:2px solid rgba(78,205,196,0.2); border-radius:20px; padding:1.5rem; text-align:center; position:sticky; top:70px; }
+  .avatar-circle { width:110px; height:110px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; font-size:3rem; margin:0 auto 0.8rem; box-shadow:0 0 0 4px rgba(78,205,196,0.3); animation:pulse 3s ease-in-out infinite; }
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(78,205,196,0.3)}50%{box-shadow:0 0 0 8px rgba(78,205,196,0.1)}}
+  .avatar-name { font-family:'Baloo 2',cursive; font-size:1.2rem; font-weight:800; color:var(--yellow); }
+  .avatar-title { color:var(--muted); font-size:0.8rem; margin-bottom:1rem; }
+  .level-selector { display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin-bottom:1rem; }
+  .level-btn { padding:4px 10px; border-radius:50px; border:2px solid rgba(255,255,255,0.1); background:transparent; color:var(--muted); cursor:pointer; font-weight:700; font-size:0.78rem; font-family:'Nunito',sans-serif; transition:all 0.2s; }
+  .level-btn.active { background:var(--blue); border-color:var(--blue); color:var(--dark); }
+  .info-box { background:rgba(78,205,196,0.06); border:1px solid rgba(78,205,196,0.2); border-radius:10px; padding:10px; font-size:0.78rem; color:var(--muted); text-align:left; }
+  .info-box b { color:var(--blue); display:block; margin-bottom:4px; }
+
+  /* LESSONS */
+  .section-title { font-family:'Baloo 2',cursive; font-size:1.8rem; font-weight:800; margin-bottom:4px; }
+  .section-sub { color:var(--muted); margin-bottom:1.5rem; font-size:0.9rem; }
+  .levels-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:0.8rem; margin-bottom:1.5rem; }
+  .level-card { background:var(--card); border-radius:16px; padding:1rem; text-align:center; cursor:pointer; border:2px solid transparent; transition:all 0.3s; }
+  .level-card:hover { transform:translateY(-3px); }
+  .level-card.active-level { border-color:var(--purple); }
+  .level-card.a1:hover { border-color:var(--green); }
+  .level-card.a2:hover { border-color:var(--blue); }
+  .level-card.b1:hover { border-color:var(--yellow); }
+  .level-card.b2:hover { border-color:var(--orange); }
+  .level-emoji { font-size:2rem; margin-bottom:6px; }
+  .level-label { font-family:'Baloo 2',cursive; font-size:1.2rem; font-weight:800; }
+  .level-desc { font-size:0.72rem; color:var(--muted); }
+  .lessons-container { background:var(--card); border-radius:16px; border:2px solid rgba(255,255,255,0.08); overflow:hidden; }
+  .lessons-header { padding:1rem 1.2rem; background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(78,205,196,0.1)); border-bottom:1px solid rgba(255,255,255,0.08); font-family:'Baloo 2',cursive; font-size:1rem; font-weight:700; }
+  .lesson-item { padding:0.9rem 1.2rem; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; gap:10px; cursor:pointer; transition:background 0.2s; }
+  .lesson-item:hover { background:rgba(255,255,255,0.03); }
+  .lesson-item:last-child { border-bottom:none; }
+  .lesson-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+  .lesson-info { flex:1; }
+  .lesson-name { font-weight:700; font-size:0.9rem; margin-bottom:2px; }
+  .lesson-preview { font-size:0.78rem; color:var(--muted); }
+
+  /* GRAMMAR */
+  .grammar-container { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; }
+  .grammar-input-card, .grammar-output-card { background:var(--card); border-radius:16px; padding:1.2rem; }
+  .grammar-input-card { border:2px solid rgba(255,107,157,0.2); }
+  .grammar-output-card { border:2px solid rgba(6,214,160,0.2); }
+  .card-title { font-weight:800; font-size:0.95rem; margin-bottom:0.8rem; display:flex; align-items:center; gap:6px; }
+  .grammar-textarea { width:100%; min-height:160px; background:rgba(255,255,255,0.04); border:2px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px; color:var(--text); font-family:'Nunito',sans-serif; font-size:0.9rem; resize:vertical; outline:none; }
+  .grammar-textarea:focus { border-color:var(--pink); }
+  .analyze-btn { width:100%; padding:10px; background:linear-gradient(135deg,var(--pink),var(--purple)); border:none; border-radius:50px; cursor:pointer; color:white; font-family:'Nunito',sans-serif; font-weight:800; font-size:0.95rem; margin-top:10px; transition:transform 0.2s; }
+  .analyze-btn:hover { transform:translateY(-2px); }
+  .grammar-result { min-height:160px; font-size:0.88rem; line-height:1.7; color:var(--muted); }
+  .grammar-result.loaded { color:var(--text); }
+
+  /* VOCAB */
+  .vocab-controls { display:flex; gap:10px; margin-bottom:1.2rem; flex-wrap:wrap; }
+  .vocab-select { padding:8px 16px; border-radius:50px; background:var(--card); border:2px solid rgba(255,255,255,0.1); color:var(--text); font-family:'Nunito',sans-serif; font-weight:700; cursor:pointer; outline:none; font-size:0.85rem; }
+  .new-words-btn { padding:8px 20px; border-radius:50px; background:linear-gradient(135deg,var(--yellow),var(--orange)); border:none; color:var(--dark); font-weight:800; font-family:'Nunito',sans-serif; cursor:pointer; font-size:0.85rem; }
+  .vocab-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:0.8rem; }
+  .vocab-card { background:var(--card); border-radius:16px; padding:1rem; border:2px solid rgba(255,255,255,0.06); cursor:pointer; transition:all 0.3s; }
+  .vocab-card:hover { transform:translateY(-3px); border-color:rgba(78,205,196,0.3); }
+  .vocab-card.flipped .vocab-front { display:none; }
+  .vocab-card.flipped .vocab-back { display:block; }
+  .vocab-back { display:none; }
+  .vocab-german { font-family:'Baloo 2',cursive; font-size:1.1rem; font-weight:700; color:var(--yellow); margin-bottom:2px; }
+  .vocab-article { color:var(--blue); font-size:0.75rem; font-weight:700; }
+  .vocab-english { color:var(--text); margin:6px 0 3px; font-weight:600; font-size:0.9rem; }
+  .vocab-example { color:var(--muted); font-size:0.78rem; font-style:italic; }
+  .flip-hint { font-size:0.68rem; color:var(--muted); text-align:right; margin-top:6px; }
+
+  /* INTERVIEW */
+  .interview-container { display:grid; grid-template-columns:260px 1fr; gap:1.2rem; }
+  .interview-info { background:var(--card); border-radius:16px; padding:1.2rem; border:2px solid rgba(255,107,53,0.2); height:fit-content; position:sticky; top:70px; }
+  .interview-avatar-circle { width:70px; height:70px; border-radius:50%; background:linear-gradient(135deg,var(--orange),var(--pink)); display:flex; align-items:center; justify-content:center; font-size:2rem; margin:0 auto 0.8rem; }
+  .interview-title { font-family:'Baloo 2',cursive; font-size:1rem; font-weight:800; text-align:center; color:var(--orange); }
+  .interview-subtitle { text-align:center; color:var(--muted); font-size:0.78rem; margin-bottom:1rem; }
+  .start-btn { width:100%; padding:10px; background:linear-gradient(135deg,var(--orange),var(--pink)); border:none; border-radius:50px; cursor:pointer; color:white; font-family:'Nunito',sans-serif; font-weight:800; font-size:0.9rem; margin-bottom:1rem; }
+  .tip-item { display:flex; gap:6px; margin-bottom:6px; font-size:0.78rem; color:var(--muted); }
+
+  ::-webkit-scrollbar { width:5px; }
+  ::-webkit-scrollbar-thumb { background:rgba(78,205,196,0.3); border-radius:3px; }
+
+  @media(max-width:640px) {
+    .avatar-section,.grammar-container,.interview-container { grid-template-columns:1fr; }
+    .levels-grid { grid-template-columns:repeat(2,1fr); }
+    .avatar-card,.interview-info { position:static; }
+    nav { flex-wrap:wrap; height:auto; padding:8px; gap:6px; }
+    .nav-tabs { order:3; width:100%; justify-content:center; }
+  }
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">🇩🇪 DeutschMitAakash</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showSection('avatar',this)">🤖 Tutor</button>
+    <button class="nav-tab" onclick="showSection('lessons',this)">📚 Lessons</button>
+    <button class="nav-tab" onclick="showSection('grammar',this)">✍️ Grammar</button>
+    <button class="nav-tab" onclick="showSection('vocab',this)">📝 Vocab</button>
+    <button class="nav-tab" onclick="showSection('interview',this)">🎤 Interview</button>
+  </div>
+  <div class="level-badge" id="currentLevel">A1</div>
+</nav>
+<main>
+
+<!-- AI TUTOR -->
+<section class="section active" id="avatar">
+  <div class="avatar-section">
+    <div class="avatar-card">
+      <div class="avatar-circle">🤖</div>
+      <div class="avatar-name">Frau Schmidt</div>
+      <div class="avatar-title">Your German Tutor</div>
+      <div class="level-selector">
+        <button class="level-btn active" onclick="setLevel('A1',this)">A1</button>
+        <button class="level-btn" onclick="setLevel('A2',this)">A2</button>
+        <button class="level-btn" onclick="setLevel('B1',this)">B1</button>
+        <button class="level-btn" onclick="setLevel('B2',this)">B2</button>
+      </div>
+      <div class="info-box"><b>💡 Ask me:</b>• Grammar rules<br>• Translations<br>• Nursing words<br>• Sentence help<br>• Verb conjugation</div>
+    </div>
+    <div class="chat-box">
+      <div class="chat-header"><div class="chat-dot"></div><span style="font-weight:700;font-size:0.9rem">Chat with Frau Schmidt</span></div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg bot"><div class="msg-label">Frau Schmidt</div>Hallo Aakash! 👋 Ich bin Frau Schmidt, deine Deutschlehrerin!<br><br>I'm here to help you with German A1–B2. Ask me anything about grammar, vocabulary, or nursing German! <b>Was möchten Sie lernen? 😊</b></div>
+      </div>
+      <div class="quick-prompts">
+        <button class="quick-btn" onclick="quickAsk('der die das')">Articles</button>
+        <button class="quick-btn" onclick="quickAsk('nursing')">Nursing words</button>
+        <button class="quick-btn" onclick="quickAsk('perfekt')">Perfekt tense</button>
+        <button class="quick-btn" onclick="quickAsk('modal')">Modal verbs</button>
+        <button class="quick-btn" onclick="quickAsk('greetings')">Greetings</button>
+      </div>
+      <div class="chat-input-area">
+        <input class="chat-input" id="chatInput" placeholder="Ask anything in English or German..." onkeypress="if(event.key==='Enter')sendChat()">
+        <button class="send-btn" onclick="sendChat()">➤</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LESSONS -->
+<section class="section" id="lessons">
+  <div class="section-title">📚 German Lessons</div>
+  <div class="section-sub">Choose your level and explore topics</div>
+  <div class="levels-grid">
+    <div class="level-card a1 active-level" onclick="showLessons('A1',this)"><div class="level-emoji">🌱</div><div class="level-label" style="color:var(--green)">A1</div><div class="level-desc">Beginner</div></div>
+    <div class="level-card a2" onclick="showLessons('A2',this)"><div class="level-emoji">🌿</div><div class="level-label" style="color:var(--blue)">A2</div><div class="level-desc">Elementary</div></div>
+    <div class="level-card b1" onclick="showLessons('B1',this)"><div class="level-emoji">🌳</div><div class="level-label" style="color:var(--yellow)">B1</div><div class="level-desc">Intermediate</div></div>
+    <div class="level-card b2" onclick="showLessons('B2',this)"><div class="level-emoji">🏆</div><div class="level-label" style="color:var(--orange)">B2</div><div class="level-desc">Upper-Int.</div></div>
+  </div>
+  <div class="lessons-container">
+    <div class="lessons-header" id="lessonsHeader">🌱 A1 — Beginner Lessons</div>
+    <div id="lessonsList"></div>
+  </div>
+</section>
+
+<!-- GRAMMAR -->
+<section class="section" id="grammar">
+  <div class="section-title">✍️ Grammar Checker</div>
+  <div class="section-sub">Write a German sentence and get instant feedback</div>
+  <div class="grammar-container">
+    <div class="grammar-input-card">
+      <div class="card-title">📝 <span style="color:var(--pink)">Your Sentence</span></div>
+      <textarea class="grammar-textarea" id="grammarInput" placeholder="Write German here...&#10;&#10;Examples:&#10;Ich bin ein Krankenpfleger.&#10;Ich habe gestern gegessen.&#10;Kannst du mir helfen?"></textarea>
+      <button class="analyze-btn" onclick="checkGrammar()">🔍 Check Grammar</button>
+    </div>
+    <div class="grammar-output-card">
+      <div class="card-title">✅ <span style="color:var(--green)">Feedback</span></div>
+      <div class="grammar-result" id="grammarResult">Your feedback will appear here...<br><br><span style="font-size:0.82rem">✓ Finds mistakes<br>✓ Explains rules<br>✓ Gives corrections<br>✓ Better version</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- VOCABULARY -->
+<section class="section" id="vocab">
+  <div class="section-title">📝 Vocabulary</div>
+  <div class="section-sub">Click cards to flip and see translation!</div>
+  <div class="vocab-controls">
+    <select class="vocab-select" id="vocabLevel" onchange="loadVocab()">
+      <option value="A1">A1 Level</option>
+      <option value="A2">A2 Level</option>
+      <option value="B1">B1 Level</option>
+      <option value="B2">B2 Level</option>
+    </select>
+    <select class="vocab-select" id="vocabCat" onchange="loadVocab()">
+      <option value="medical">Medical/Nursing</option>
+      <option value="daily">Daily Life</option>
+      <option value="work">Work</option>
+      <option value="body">Body Parts</option>
+    </select>
+    <button class="new-words-btn" onclick="loadVocab()">🔄 Shuffle</button>
+  </div>
+  <div class="vocab-grid" id="vocabGrid"></div>
+</section>
+
+<!-- INTERVIEW -->
+<section class="section" id="interview">
+  <div class="section-title">🎤 Mock Interview</div>
+  <div class="section-sub">Practice Nursing Ausbildung interview in German!</div>
+  <div class="interview-container">
+    <div class="interview-info">
+      <div class="interview-avatar-circle">👩‍💼</div>
+      <div class="interview-title">Frau Müller</div>
+      <div class="interview-subtitle">HR Manager, Krankenhaus Berlin</div>
+      <button class="start-btn" onclick="startInterview()">🎤 Start Interview</button>
+      <div style="font-weight:700;font-size:0.82rem;color:var(--orange);margin-bottom:6px">Tips:</div>
+      <div class="tip-item">⏰ Answer in 3-5 sentences</div>
+      <div class="tip-item">💪 Mention your B2 certificate</div>
+      <div class="tip-item">❤️ Show nursing passion</div>
+      <div class="tip-item">🗣️ Speak slowly & clearly</div>
+    </div>
+    <div class="chat-box">
+      <div class="chat-header"><div class="chat-dot" style="background:var(--orange)"></div><span style="font-weight:700;font-size:0.9rem">Mock Interview — Nursing Ausbildung</span></div>
+      <div class="chat-messages" id="interviewMessages">
+        <div class="msg bot"><div class="msg-label" style="color:var(--orange)">Frau Müller</div>Willkommen! 🎤<br><br>I am Frau Müller from Krankenhaus Berlin. Click <b>"Start Interview"</b> to begin. I will ask you questions in German and give you feedback after each answer!<br><br>Viel Erfolg! 🍀</div>
+      </div>
+      <div class="chat-input-area">
+        <input class="chat-input" id="interviewInput" placeholder="Type your German answer..." onkeypress="if(event.key==='Enter')sendAnswer()">
+        <button class="send-btn" style="background:linear-gradient(135deg,var(--orange),var(--pink))" onclick="sendAnswer()">➤</button>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+// ── NAV ──
+function showSection(name,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+function setLevel(l,btn){
+  document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('currentLevel').textContent=l;
+  currentLevel=l;
+}
+let currentLevel='A1';
+
+// ── SMART RESPONSES ──
+const responses = {
+  'der die das': `📚 <b>German Articles: der, die, das</b><br><br>German has 3 genders:<br>• <b style="color:#4ECDC4">der</b> = masculine (der Mann, der Arzt)<br>• <b style="color:#FF6B9D">die</b> = feminine (die Frau, die Krankenschwester)<br>• <b style="color:#FFD93D">das</b> = neuter (das Kind, das Krankenhaus)<br><br>💡 <b>Trick:</b> Learn each noun WITH its article!<br>❌ Krankenhaus ✅ <b>das</b> Krankenhaus<br><br>Plural always uses <b>die</b>: die Männer, die Krankenhäuser`,
+
+  'nursing': `🏥 <b>Important Nursing Vocabulary (Pflegevokabular)</b><br><br><b>People:</b><br>• der Arzt / die Ärztin = Doctor<br>• der Krankenpfleger / die Krankenpflegerin = Nurse<br>• der Patient / die Patientin = Patient<br><br><b>Places:</b><br>• das Krankenhaus = Hospital<br>• die Station = Ward<br>• die Notaufnahme = Emergency room<br><br><b>Actions:</b><br>• die Pflege = Care/Nursing<br>• die Behandlung = Treatment<br>• die Diagnose = Diagnosis<br>• der Blutdruck = Blood pressure<br>• die Spritze = Injection<br>• das Medikament = Medication<br><br>💡 Sehr wichtig für die Ausbildung!`,
+
+  'perfekt': `⏰ <b>Perfekt Tense (Past Tense)</b><br><br>Used for completed past actions in spoken German.<br><br><b>Formula:</b> haben/sein + Partizip II<br><br><b>With HABEN (most verbs):</b><br>• Ich <b>habe</b> gegessen = I ate/have eaten<br>• Er <b>hat</b> gearbeitet = He worked<br>• Wir <b>haben</b> gelernt = We learned<br><br><b>With SEIN (movement/change):</b><br>• Ich <b>bin</b> gegangen = I went<br>• Er <b>ist</b> gekommen = He came<br>• Sie <b>ist</b> gefahren = She drove<br><br><b>Partizip II patterns:</b><br>• Regular: ge + stem + t → gemacht, gelernt<br>• Irregular: ge + stem + en → gegessen, getrunken<br><br>💡 For Ausbildung: <i>"Ich habe in Indien Deutsch gelernt."</i>`,
+
+  'modal': `🔧 <b>Modal Verbs (Modalverben)</b><br><br>• <b>können</b> = can/be able to → Ich <b>kann</b> Deutsch sprechen<br>• <b>müssen</b> = must/have to → Ich <b>muss</b> arbeiten<br>• <b>wollen</b> = want to → Ich <b>will</b> Krankenpfleger werden<br>• <b>sollen</b> = should → Du <b>sollst</b> die Tablette nehmen<br>• <b>dürfen</b> = may/allowed to → Darf ich fragen?<br>• <b>möchten</b> = would like → Ich <b>möchte</b> helfen<br><br><b>Word order:</b> Modal verb in position 2, infinitive at END<br>✅ Ich <b>möchte</b> Krankenpfleger <b>werden</b>.<br>✅ Er <b>kann</b> gut <b>arbeiten</b>.<br><br>💡 Very useful for job interviews!`,
+
+  'greetings': `👋 <b>German Greetings (Begrüßungen)</b><br><br><b>Formal:</b><br>• Guten Morgen! = Good morning (until ~11am)<br>• Guten Tag! = Good day (daytime)<br>• Guten Abend! = Good evening<br>• Auf Wiedersehen! = Goodbye (formal)<br><br><b>Informal:</b><br>• Hallo! = Hello<br>• Hi! = Hi<br>• Tschüss! = Bye<br><br><b>How are you?</b><br>• Wie geht es Ihnen? = How are you? (formal)<br>• Wie geht es dir? = How are you? (informal)<br>• Danke, gut! = Thank you, good!<br><br>💡 In a job interview: <b>"Guten Tag, ich freue mich, hier zu sein!"</b>`,
+
+  default: `Gute Frage! 😊 Let me help you with that!<br><br>Here are some topics I can explain well:<br>• <b>Grammar:</b> articles, cases, tenses, word order<br>• <b>Nursing vocabulary</b> for your Ausbildung<br>• <b>Interview phrases</b> in German<br>• <b>Common mistakes</b> Indians make in German<br><br>Try asking about: <i>Perfekt, Dativ, Akkusativ, word order, nursing words, interview tips</i><br><br>Oder frag mich auf Deutsch! 🇩🇪`
+};
+
+function getResponse(input) {
+  const q = input.toLowerCase();
+  if(q.includes('der') || q.includes('die') || q.includes('das') || q.includes('article')) return responses['der die das'];
+  if(q.includes('nurs') || q.includes('kranken') || q.includes('pflege') || q.includes('hospital') || q.includes('medical')) return responses['nursing'];
+  if(q.includes('perfekt') || q.includes('past tense') || q.includes('haben') || q.includes('sein')) return responses['perfekt'];
+  if(q.includes('modal') || q.includes('können') || q.includes('müssen') || q.includes('wollen') || q.includes('möchten')) return responses['modal'];
+  if(q.includes('greet') || q.includes('hallo') || q.includes('guten') || q.includes('hello')) return responses['greetings'];
+  if(q.includes('dativ') || q.includes('dative')) return `📖 <b>Dativ (Dative Case)</b><br><br>Used after: mit, bei, seit, von, zu, aus, nach, gegenüber<br><br><b>Article changes:</b><br>• der → <b>dem</b>: mit <b>dem</b> Arzt<br>• die → <b>der</b>: mit <b>der</b> Pflegerin<br>• das → <b>dem</b>: in <b>dem</b> Krankenhaus<br><br><b>Examples:</b><br>• Ich spreche <b>mit dem</b> Patienten.<br>• Sie arbeitet <b>bei der</b> Klinik.<br>• Ich wohne <b>seit einem</b> Jahr in Deutschland.<br><br>💡 Important for nursing: <i>"Ich helfe <b>dem</b> Patienten."</i>`;
+  if(q.includes('akkusativ') || q.includes('accusative')) return `📖 <b>Akkusativ (Accusative Case)</b><br><br>Used for the direct object of a sentence.<br><br><b>Article changes:</b><br>• der → <b>den</b>: Ich sehe <b>den</b> Arzt<br>• die → die (no change): Ich sehe <b>die</b> Pflegerin<br>• das → das (no change): Ich sehe <b>das</b> Kind<br><br><b>After: durch, für, gegen, ohne, um</b><br>• Das ist <b>für den</b> Patienten.<br>• Ich arbeite <b>ohne den</b> Kollegen.<br><br>💡 Remember: Only <b>der</b> changes to <b>den</b>!`;
+  if(q.includes('translate') || q.includes('übersetze') || q.includes('how do you say')) return `🔤 <b>Translation Help</b><br><br>Some useful nursing phrases:<br><br>• "I want to become a nurse" = <b>Ich möchte Krankenpfleger werden</b><br>• "I have been learning German for 18 months" = <b>Ich lerne seit 18 Monaten Deutsch</b><br>• "I passed the Goethe B2 exam" = <b>Ich habe das Goethe-B2-Zertifikat bestanden</b><br>• "I am motivated and hardworking" = <b>Ich bin motiviert und fleißig</b><br>• "How can I help you?" = <b>Wie kann ich Ihnen helfen?</b><br>• "Please repeat that" = <b>Könnten Sie das bitte wiederholen?</b>`;
+  if(q.includes('word order') || q.includes('satzstellung') || q.includes('verb position')) return `📐 <b>German Word Order</b><br><br><b>Main rule: Verb is ALWAYS in position 2!</b><br><br>✅ <b>Ich</b> <u>lerne</u> Deutsch.<br>✅ <b>Heute</b> <u>lerne</u> ich Deutsch.<br>✅ <b>In Deutschland</b> <u>möchte</u> ich arbeiten.<br><br><b>With modal verbs:</b> Modal in pos.2, infinitive at END<br>✅ Ich <u>möchte</u> Krankenpfleger <u>werden</u>.<br><br><b>In questions:</b> Verb comes FIRST<br>✅ <u>Arbeiten</u> Sie im Krankenhaus?<br>✅ <u>Haben</u> Sie Erfahrung?<br><br>💡 This is the most important German grammar rule!`;
+  return responses['default'];
+}
+
+// ── CHAT ──
+function addMsg(containerId, role, text, labelColor) {
+  const c = document.getElementById(containerId);
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  const label = containerId==='interviewMessages' ? (role==='bot'?'Frau Müller':'You') : (role==='bot'?'Frau Schmidt':'You');
+  const col = labelColor || (role==='bot'?'var(--blue)':'rgba(255,255,255,0.7)');
+  d.innerHTML = `<div class="msg-label" style="color:${col}">${label}</div>${text}`;
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+function addTyping(id) {
+  const c = document.getElementById(id);
+  const d = document.createElement('div');
+  d.className='msg bot'; d.id='typing-'+id;
+  d.innerHTML='<div class="typing"><span></span><span></span><span></span></div>';
+  c.appendChild(d); c.scrollTop=c.scrollHeight;
+}
+function removeTyping(id){const e=document.getElementById('typing-'+id);if(e)e.remove();}
+
+function sendChat(){
+  const inp=document.getElementById('chatInput');
+  const text=inp.value.trim(); if(!text)return;
+  inp.value='';
+  addMsg('chatMessages','user',text);
+  addTyping('chatMessages');
+  setTimeout(()=>{
+    removeTyping('chatMessages');
+    addMsg('chatMessages','bot',getResponse(text));
+  },800);
+}
+function quickAsk(q){document.getElementById('chatInput').value=q;sendChat();}
+
+// ── GRAMMAR ──
+function checkGrammar(){
+  const text=document.getElementById('grammarInput').value.trim();
+  if(!text)return;
+  const result=document.getElementById('grammarResult');
+  result.innerHTML='<div class="typing"><span></span><span></span><span></span></div> Analyzing...';
+  result.classList.remove('loaded');
+  setTimeout(()=>{
+    const feedback=analyzeGerman(text);
+    result.innerHTML=feedback;
+    result.classList.add('loaded');
+  },1000);
+}
+
+function analyzeGerman(text){
+  const errors=[];
+  let corrected=text;
+  // Common checks
+  if(/ich bin ein krankenpfleger/i.test(text)) { errors.push('✅ Correct! "Ich bin ein Krankenpfleger" is grammatically correct.'); }
+  if(/ich habe.*gegangen/i.test(text)) { errors.push('❌ <b>Mistake:</b> "haben + gegangen" is wrong.<br>✅ <b>Correction:</b> Use "sein": <b>Ich bin gegangen</b><br>📖 <b>Rule:</b> Movement verbs use "sein" not "haben".'); corrected=text.replace(/habe/i,'bin'); }
+  if(/ich habe.*gefahren/i.test(text)) { errors.push('❌ <b>Mistake:</b> Use "sein" with fahren.<br>✅ <b>Correction:</b> <b>Ich bin gefahren</b>'); }
+  if(/\bich\b.*\bbin\b.*\bein\b/i.test(text) && !/fehler/i.test(text)) { errors.push('✅ Good use of "sein" verb!'); }
+  if(/möchte.*werden/i.test(text)) { errors.push('✅ Excellent! Modal verb + infinitive at end — perfect word order!'); }
+  if(/seit.*jahren/i.test(text)||/seit.*monaten/i.test(text)) { errors.push('✅ Good use of "seit" with Dativ!'); }
+  if(errors.length===0) {
+    // Generic analysis
+    const words=text.split(' ');
+    return `📝 <b>Analysis of:</b> "${text}"<br><br>✅ <b>No obvious errors found!</b><br><br>📊 <b>Details:</b><br>• Words: ${words.length}<br>• Sentence ends correctly: ${/[.!?]$/.test(text)?'✅':'❌ Add punctuation!'}<br>• Capital letter at start: ${/^[A-ZÄÖÜ]/.test(text)?'✅':'❌ Start with capital!'}<br><br>💡 <b>Tip:</b> Check word order — verb should be in position 2!<br><br>🌟 <b>Rating:</b> ⭐⭐⭐⭐`;
+  }
+  return `📝 <b>Analysis of:</b> "${text}"<br><br>${errors.join('<br><br>')}<br><br>✏️ <b>Suggested version:</b> <b style="color:var(--green)">${corrected}</b>`;
+}
+
+// ── LESSONS ──
+const lessonsData={
+  A1:[
+    {icon:'👋',bg:'rgba(6,214,160,0.15)',name:'Greetings',preview:'Hallo, Guten Morgen, Tschüss...',
+     content:`<b>🌟 A1 Lesson: Greetings (Begrüßungen)</b><br><br><b>Formal:</b><br>• Guten Morgen! = Good morning<br>• Guten Tag! = Good day<br>• Guten Abend! = Good evening<br>• Auf Wiedersehen! = Goodbye<br><br><b>Informal:</b><br>• Hallo! / Hi! = Hello<br>• Tschüss! = Bye<br><br><b>Asking how someone is:</b><br>• Wie geht es Ihnen? (formal)<br>• Wie geht es dir? (informal)<br>• Danke, gut! = Thank you, good!<br><br>💡 For your interview: <b>"Guten Tag, ich freue mich sehr, hier zu sein!"</b>`},
+    {icon:'🔢',bg:'rgba(6,214,160,0.12)',name:'Numbers 1-100',preview:'eins, zwei, drei...',
+     content:`<b>🔢 A1 Lesson: Numbers (Zahlen)</b><br><br>1=eins, 2=zwei, 3=drei, 4=vier, 5=fünf<br>6=sechs, 7=sieben, 8=acht, 9=neun, 10=zehn<br>11=elf, 12=zwölf, 13=dreizehn, 20=zwanzig<br>21=einundzwanzig, 30=dreißig, 100=hundert<br><br>💡 Useful: "Ich lerne seit <b>18 Monaten</b> Deutsch."<br>achtzehn = 18`},
+    {icon:'📅',bg:'rgba(6,214,160,0.1)',name:'Days & Months',preview:'Montag, Januar...',
+     content:`<b>📅 A1: Days and Months</b><br><br><b>Days:</b> Montag, Dienstag, Mittwoch, Donnerstag, Freitag, Samstag, Sonntag<br><br><b>Months:</b> Januar, Februar, März, April, Mai, Juni, Juli, August, September, Oktober, November, Dezember<br><br>💡 In nursing: "Die Visite ist <b>jeden Montag</b>." (The round is every Monday.)`},
+    {icon:'🏠',bg:'rgba(6,214,160,0.08)',name:'Articles: der die das',preview:'der Mann, die Frau...',
+     content:responses['der die das']},
+    {icon:'👨‍👩‍👧',bg:'rgba(6,214,160,0.1)',name:'Family',preview:'Mutter, Vater, Bruder...',
+     content:`<b>👨‍👩‍👧 A1: Family (Familie)</b><br><br>• die Mutter = mother<br>• der Vater = father<br>• der Bruder = brother<br>• die Schwester = sister<br>• die Eltern = parents (plural)<br>• der Sohn = son<br>• die Tochter = daughter<br>• die Großmutter/Oma = grandmother<br>• der Großvater/Opa = grandfather<br><br>💡 Interview: "Ich komme aus Indien und meine Familie unterstützt mich sehr."`},
+    {icon:'🎨',bg:'rgba(6,214,160,0.06)',name:'Colors & Adjectives',preview:'rot, blau, groß, klein...',
+     content:`<b>🎨 A1: Colors & Adjectives</b><br><br><b>Colors:</b> rot=red, blau=blue, grün=green, gelb=yellow, weiß=white, schwarz=black, orange=orange<br><br><b>Common adjectives:</b><br>• groß = big / klein = small<br>• gut = good / schlecht = bad<br>• schnell = fast / langsam = slow<br>• freundlich = friendly<br>• fleißig = hardworking ← Important for interviews!<br><br>💡 "Ich bin <b>fleißig, freundlich und motiviert</b>."`},
+  ],
+  A2:[
+    {icon:'⏰',bg:'rgba(78,205,196,0.15)',name:'Telling Time',preview:'Es ist drei Uhr...',
+     content:`<b>⏰ A2: Telling Time (Uhrzeit)</b><br><br>• Es ist drei Uhr = It is 3 o'clock<br>• Es ist halb vier = It is 3:30 (half to four)<br>• Es ist Viertel nach drei = It is 3:15<br>• Es ist Viertel vor vier = It is 3:45<br><br>💡 Nursing: "Die Schicht beginnt um <b>sieben Uhr</b>." (Shift starts at 7.)`},
+    {icon:'💬',bg:'rgba(78,205,196,0.1)',name:'Perfekt Tense',preview:'Ich habe gegessen...',
+     content:responses['perfekt']},
+    {icon:'🔧',bg:'rgba(78,205,196,0.12)',name:'Modal Verbs',preview:'können, müssen, wollen...',
+     content:responses['modal']},
+    {icon:'📐',bg:'rgba(78,205,196,0.08)',name:'Word Order',preview:'Verb in position 2...',
+     content:`<b>📐 A2: German Word Order</b><br><br><b>Golden Rule: Verb is ALWAYS in position 2!</b><br><br>✅ <b>Ich</b> <u>lerne</u> Deutsch. (Subject first)<br>✅ <b>Heute</b> <u>lerne</u> ich Deutsch. (Time first)<br>✅ <b>In Deutschland</b> <u>möchte</u> ich arbeiten.<br><br><b>Questions:</b> Verb first<br>• <u>Arbeiten</u> Sie im Krankenhaus?<br>• <u>Haben</u> Sie Erfahrung?<br><br><b>Modal verbs:</b> Modal pos.2 + infinitive at END<br>• Ich <u>möchte</u> Krankenpfleger <u>werden</u>.`},
+    {icon:'🌍',bg:'rgba(78,205,196,0.1)',name:'Countries & Nationalities',preview:'Indien, Deutschland...',
+     content:`<b>🌍 A2: Countries (Länder)</b><br><br>• Indien = India → indisch/Inder(in)<br>• Deutschland = Germany → deutsch/Deutscher(in)<br>• Österreich = Austria<br>• die Schweiz = Switzerland<br><br><b>Key phrases:</b><br>• Ich komme aus <b>Indien</b>. = I come from India.<br>• Ich wohne in <b>Deutschland</b>. = I live in Germany.<br>• Ich bin <b>Inder</b>. = I am Indian.<br><br>💡 Interview opener: "Ich komme aus <b>Indien</b> und möchte in Deutschland arbeiten."`},
+    {icon:'🛒',bg:'rgba(78,205,196,0.08)',name:'Shopping & Prices',preview:'Wie viel kostet das?...',
+     content:`<b>🛒 A2: Shopping (Einkaufen)</b><br><br>• Wie viel kostet das? = How much does it cost?<br>• Das kostet... Euro = It costs... Euro<br>• Ich möchte... kaufen = I would like to buy...<br>• Das ist zu teuer = That is too expensive<br>• Haben Sie...? = Do you have...?<br><br>Useful at the Supermarkt, Apotheke (pharmacy)!`},
+  ],
+  B1:[
+    {icon:'💼',bg:'rgba(255,215,61,0.12)',name:'Job Applications',preview:'Bewerbung, Lebenslauf...',
+     content:`<b>💼 B1: Job Applications (Bewerbung)</b><br><br><b>Key vocabulary:</b><br>• die Bewerbung = application<br>• der Lebenslauf = CV/resume<br>• das Vorstellungsgespräch = job interview<br>• die Stelle = job position<br>• die Ausbildung = apprenticeship/training<br>• die Erfahrung = experience<br>• die Qualifikation = qualification<br><br><b>Key phrases:</b><br>• "Ich bewerbe mich um die Stelle als Krankenpfleger."<br>• "Ich habe das Goethe-B2-Zertifikat bestanden."<br>• "Ich bin sehr motiviert und lernbereit."`},
+    {icon:'🏥',bg:'rgba(255,215,61,0.1)',name:'Health & Body',preview:'Ich habe Schmerzen...',
+     content:`<b>🏥 B1: Health & Body (Gesundheit & Körper)</b><br><br><b>Body parts:</b> der Kopf=head, der Arm=arm, das Bein=leg, der Bauch=stomach, das Herz=heart, die Lunge=lung, die Niere=kidney<br><br><b>Symptoms:</b><br>• Ich habe Schmerzen = I have pain<br>• Ich habe Fieber = I have fever<br>• Mir ist schwindelig = I feel dizzy<br>• Ich kann nicht schlafen = I can't sleep<br><br>💡 Nursing phrases:<br>• "Wo haben Sie Schmerzen?"<br>• "Wie lange haben Sie schon Fieber?"`},
+    {icon:'🔗',bg:'rgba(255,215,61,0.1)',name:'Connectors',preview:'weil, obwohl, damit...',
+     content:`<b>🔗 B1: Connectors (Konjunktionen)</b><br><br><b>Coordinating (no word order change):</b><br>• und=and, aber=but, oder=or, denn=because<br><br><b>Subordinating (verb goes to END):</b><br>• weil = because → Ich lerne Deutsch, weil ich in Deutschland arbeiten <b>möchte</b>.<br>• obwohl = although<br>• dass = that → Ich glaube, dass Pflege wichtig <b>ist</b>.<br>• wenn = if/when<br>• damit = so that<br><br>💡 Interview: "Ich möchte Krankenpfleger werden, <b>weil</b> ich Menschen helfen <b>möchte</b>."`},
+    {icon:'📜',bg:'rgba(255,215,61,0.08)',name:'Passive Voice',preview:'Das wird gemacht...',
+     content:`<b>📜 B1: Passive Voice (Passiv)</b><br><br><b>Formula:</b> werden + Partizip II<br><br>• Die Wunde <b>wird verbunden</b>. = The wound is bandaged.<br>• Der Patient <b>wird behandelt</b>. = The patient is treated.<br>• Das Medikament <b>wird gegeben</b>. = The medication is given.<br><br><b>Past passive:</b> wurde + Partizip II<br>• Die Tablette <b>wurde gegeben</b>. = The tablet was given.<br><br>💡 Very common in medical documentation!`},
+    {icon:'🗣️',bg:'rgba(255,215,61,0.1)',name:'Opinions',preview:'Meiner Meinung nach...',
+     content:`<b>🗣️ B1: Expressing Opinions</b><br><br>• Meiner Meinung nach... = In my opinion...<br>• Ich glaube/denke, dass... = I believe/think that...<br>• Ich bin der Meinung, dass... = I am of the opinion that...<br>• Einerseits... andererseits... = On one hand... on the other...<br>• Ich finde es wichtig, dass... = I find it important that...<br><br>💡 Interview: "<b>Meiner Meinung nach</b> ist Pflege eine der wichtigsten Berufe in unserer Gesellschaft."`},
+    {icon:'📊',bg:'rgba(255,215,61,0.08)',name:'Konjunktiv II',preview:'Ich würde, wäre...',
+     content:`<b>📊 B1: Konjunktiv II (Wishes/Polite)</b><br><br>Used for wishes, polite requests, hypotheticals:<br><br><b>Most common:</b><br>• ich <b>würde</b> + infinitive = I would...<br>• ich <b>wäre</b> = I would be<br>• ich <b>hätte</b> = I would have<br>• ich <b>könnte</b> = I could<br><br><b>Examples:</b><br>• "Ich <b>würde</b> gerne in Ihrer Einrichtung <b>arbeiten</b>."<br>• "<b>Könnten</b> Sie das bitte wiederholen?"<br>• "Es <b>wäre</b> eine große Chance für mich."<br><br>💡 Makes your German sound very polite and professional!`},
+  ],
+  B2:[
+    {icon:'🎤',bg:'rgba(255,107,53,0.12)',name:'Presentations',preview:'Zum einen, zum anderen...',
+     content:`<b>🎤 B2: Presentations & Arguments</b><br><br><b>Structuring your speech:</b><br>• Zunächst möchte ich... = First I would like to...<br>• Zum einen... zum anderen... = On one hand... on the other...<br>• Außerdem = Furthermore<br>• Darüber hinaus = Moreover<br>• Abschließend = In conclusion<br>• Zusammenfassend = In summary<br><br>💡 Interview closing: "<b>Zusammenfassend</b> bin ich überzeugt, dass ich der richtige Kandidat bin, weil ich motiviert, lernbereit und B2-zertifiziert bin."`},
+    {icon:'🩺',bg:'rgba(255,107,53,0.12)',name:'Medical German',preview:'Pflegefachsprache...',
+     content:responses['nursing']},
+    {icon:'📖',bg:'rgba(255,107,53,0.1)',name:'Complex Grammar',preview:'Relativsätze...',
+     content:`<b>📖 B2: Relative Clauses (Relativsätze)</b><br><br><b>Formula:</b> ...noun + [der/die/das + ... verb at END]<br><br>• Das ist der Arzt, <b>der</b> mir geholfen <b>hat</b>.<br>• Die Patientin, <b>die</b> Fieber <b>hat</b>, braucht Ruhe.<br>• Das Krankenhaus, <b>das</b> ich besucht <b>habe</b>, war toll.<br><br><b>With prepositions:</b><br>• Der Patient, <b>für den</b> ich arbeite, ist freundlich.<br><br>💡 B2 level speech: "Das ist eine Stelle, <b>die</b> mich sehr <b>interessiert</b>."`},
+    {icon:'🏛️',bg:'rgba(255,107,53,0.1)',name:'Formal German',preview:'Geschäftsbriefe...',
+     content:`<b>🏛️ B2: Formal Written German</b><br><br><b>Letter openings:</b><br>• Sehr geehrte Damen und Herren, = Dear Sir/Madam<br>• Sehr geehrte Frau [Name], = Dear Ms. [Name]<br>• Sehr geehrter Herr [Name], = Dear Mr. [Name]<br><br><b>Useful phrases:</b><br>• Hiermit bewerbe ich mich um... = I hereby apply for...<br>• Mit freundlichen Grüßen = Kind regards<br>• Ich freue mich auf Ihre Rückmeldung. = I look forward to your response.<br><br>💡 Use these in your Bewerbungsschreiben (cover letter)!`},
+    {icon:'🧠',bg:'rgba(255,107,53,0.08)',name:'Advanced Prepositions',preview:'wegen, trotz, während...',
+     content:`<b>🧠 B2: Advanced Prepositions</b><br><br><b>With Genitiv:</b><br>• wegen = because of → wegen <b>des</b> Regens<br>• trotz = despite → trotz <b>der</b> Schwierigkeiten<br>• während = during → während <b>der</b> Ausbildung<br>• statt = instead of<br><br><b>Useful sentences:</b><br>• "<b>Trotz</b> der Herausforderungen habe ich B2 bestanden."<br>• "<b>Während</b> der Ausbildung werde ich viel lernen."<br>• "<b>Wegen</b> meiner Leidenschaft möchte ich Pfleger werden."`},
+    {icon:'⭐',bg:'rgba(255,107,53,0.1)',name:'Interview Advanced',preview:'B2 interview phrases...',
+     content:`<b>⭐ B2: Advanced Interview Phrases</b><br><br><b>Strengths:</b><br>• "Meine größte Stärke ist meine Empathie und Belastbarkeit."<br>• "Ich zeichne mich durch Zuverlässigkeit und Teamfähigkeit aus."<br><br><b>Motivation:</b><br>• "Die Pflege ist für mich mehr als ein Beruf – es ist eine Berufung."<br>• "Ich möchte einen bedeutsamen Beitrag zum Gesundheitswesen leisten."<br><br><b>About your German:</b><br>• "Ich habe in 18 Monaten das B2-Niveau erreicht, was meine Lernbereitschaft beweist."<br><br>💡 These phrases will impress any employer!`},
+  ],
+};
+
+function showLessons(level,card){
+  document.querySelectorAll('.level-card').forEach(c=>c.classList.remove('active-level'));
+  card.classList.add('active-level');
+  const e={A1:'🌱',A2:'🌿',B1:'🌳',B2:'🏆'};
+  document.getElementById('lessonsHeader').textContent=`${e[level]} ${level} — Lessons`;
+  const list=document.getElementById('lessonsList');
+  list.innerHTML='';
+  lessonsData[level].forEach(l=>{
+    const d=document.createElement('div');
+    d.className='lesson-item';
+    d.onclick=()=>openLesson(l);
+    d.innerHTML=`<div class="lesson-icon" style="background:${l.bg}">${l.icon}</div><div class="lesson-info"><div class="lesson-name">${l.name}</div><div class="lesson-preview">${l.preview}</div></div><div style="color:var(--muted)">›</div>`;
+    list.appendChild(d);
+  });
+}
+function openLesson(lesson){
+  showSection('avatar', document.querySelector('.nav-tab'));
+  document.querySelectorAll('.nav-tab')[0].classList.add('active');
+  setTimeout(()=>{
+    addMsg('chatMessages','user',`Teach me: ${lesson.name}`);
+    addTyping('chatMessages');
+    setTimeout(()=>{removeTyping('chatMessages');addMsg('chatMessages','bot',lesson.content);},600);
+  },200);
+}
+showLessons('A1',document.querySelector('.level-card.a1'));
+
+// ── VOCABULARY ──
+const vocab={
+  A1:{
+    medical:[
+      {de:'das Krankenhaus',art:'das',en:'Hospital',ex:'Ich arbeite im Krankenhaus.'},
+      {de:'der Arzt',art:'der',en:'Doctor (male)',ex:'Der Arzt hilft dem Patienten.'},
+      {de:'die Ärztin',art:'die',en:'Doctor (female)',ex:'Die Ärztin ist freundlich.'},
+      {de:'die Tablette',art:'die',en:'Tablet/Pill',ex:'Nehmen Sie diese Tablette.'},
+      {de:'das Fieber',art:'das',en:'Fever',ex:'Der Patient hat Fieber.'},
+      {de:'der Schmerz',art:'der',en:'Pain',ex:'Ich habe Schmerzen.'},
+      {de:'die Pflege',art:'die',en:'Nursing/Care',ex:'Die Pflege ist wichtig.'},
+      {de:'der Patient',art:'der',en:'Patient (male)',ex:'Der Patient schläft.'},
+    ],
+    daily:[
+      {de:'das Wasser',art:'das',en:'Water',ex:'Ich trinke Wasser.'},
+      {de:'das Haus',art:'das',en:'House',ex:'Das Haus ist groß.'},
+      {de:'der Tag',art:'der',en:'Day',ex:'Der Tag ist schön.'},
+      {de:'die Zeit',art:'die',en:'Time',ex:'Die Zeit vergeht schnell.'},
+      {de:'das Buch',art:'das',en:'Book',ex:'Das Buch ist interessant.'},
+      {de:'die Arbeit',art:'die',en:'Work',ex:'Die Arbeit macht Spaß.'},
+      {de:'der Mensch',art:'der',en:'Person',ex:'Der Mensch ist freundlich.'},
+      {de:'die Stadt',art:'die',en:'City',ex:'Die Stadt ist schön.'},
+    ],
+    body:[
+      {de:'der Kopf',art:'der',en:'Head',ex:'Ich habe Kopfschmerzen.'},
+      {de:'der Arm',art:'der',en:'Arm',ex:'Der Arm tut weh.'},
+      {de:'das Bein',art:'das',en:'Leg',ex:'Das Bein ist gebrochen.'},
+      {de:'der Bauch',art:'der',en:'Stomach',ex:'Ich habe Bauchschmerzen.'},
+      {de:'das Herz',art:'das',en:'Heart',ex:'Das Herz schlägt schnell.'},
+      {de:'die Hand',art:'die',en:'Hand',ex:'Wash your hands!'},
+      {de:'der Mund',art:'der',en:'Mouth',ex:'Öffnen Sie den Mund.'},
+      {de:'die Nase',art:'die',en:'Nose',ex:'Die Nase läuft.'},
+    ],
+    work:[
+      {de:'die Ausbildung',art:'die',en:'Apprenticeship',ex:'Ich mache eine Ausbildung.'},
+      {de:'der Beruf',art:'der',en:'Profession',ex:'Mein Beruf ist Pfleger.'},
+      {de:'die Stelle',art:'die',en:'Job position',ex:'Ich suche eine Stelle.'},
+      {de:'die Schule',art:'die',en:'School',ex:'Ich gehe in die Schule.'},
+      {de:'der Kollege',art:'der',en:'Colleague (male)',ex:'Der Kollege ist nett.'},
+      {de:'der Chef',art:'der',en:'Boss',ex:'Der Chef ist streng.'},
+      {de:'das Gehalt',art:'das',en:'Salary',ex:'Das Gehalt ist gut.'},
+      {de:'die Arbeit',art:'die',en:'Work',ex:'Die Arbeit macht Spaß.'},
+    ],
+  },
+  B2:{
+    medical:[
+      {de:'die Pflegedokumentation',art:'die',en:'Care documentation',ex:'Die Dokumentation muss aktuell sein.'},
+      {de:'die Diagnose',art:'die',en:'Diagnosis',ex:'Die Diagnose wurde gestellt.'},
+      {de:'die Behandlung',art:'die',en:'Treatment',ex:'Die Behandlung dauert 2 Wochen.'},
+      {de:'die Genesung',art:'die',en:'Recovery',ex:'Der Patient ist auf dem Weg der Genesung.'},
+      {de:'die Grundpflege',art:'die',en:'Basic care',ex:'Die Grundpflege gehört zum Alltag.'},
+      {de:'der Blutdruck',art:'der',en:'Blood pressure',ex:'Der Blutdruck ist zu hoch.'},
+      {de:'die Infusion',art:'die',en:'IV drip',ex:'Der Patient bekommt eine Infusion.'},
+      {de:'die Wunde',art:'die',en:'Wound',ex:'Die Wunde muss desinfiziert werden.'},
+    ],
+    daily:[
+      {de:'die Herausforderung',art:'die',en:'Challenge',ex:'Das ist eine große Herausforderung.'},
+      {de:'die Entscheidung',art:'die',en:'Decision',ex:'Ich muss eine Entscheidung treffen.'},
+      {de:'die Verantwortung',art:'die',en:'Responsibility',ex:'Das ist meine Verantwortung.'},
+      {de:'der Fortschritt',art:'der',en:'Progress',ex:'Der Fortschritt ist gut.'},
+      {de:'die Erfahrung',art:'die',en:'Experience',ex:'Ich habe viel Erfahrung.'},
+      {de:'der Erfolg',art:'der',en:'Success',ex:'Mein Erfolg macht mich stolz.'},
+      {de:'die Fähigkeit',art:'die',en:'Ability/Skill',ex:'Diese Fähigkeit ist wichtig.'},
+      {de:'die Leidenschaft',art:'die',en:'Passion',ex:'Pflege ist meine Leidenschaft.'},
+    ],
+    body:[
+      {de:'die Lunge',art:'die',en:'Lung',ex:'Die Lunge atmet.'},
+      {de:'die Niere',art:'die',en:'Kidney',ex:'Die Niere filtert das Blut.'},
+      {de:'die Leber',art:'die',en:'Liver',ex:'Die Leber ist wichtig.'},
+      {de:'das Gehirn',art:'das',en:'Brain',ex:'Das Gehirn steuert alles.'},
+      {de:'die Wirbelsäule',art:'die',en:'Spine',ex:'Die Wirbelsäule tut weh.'},
+      {de:'der Blutkreislauf',art:'der',en:'Blood circulation',ex:'Der Blutkreislauf ist gestört.'},
+      {de:'das Immunsystem',art:'das',en:'Immune system',ex:'Das Immunsystem kämpft.'},
+      {de:'die Muskulatur',art:'die',en:'Musculature',ex:'Die Muskulatur ist wichtig.'},
+    ],
+    work:[
+      {de:'die Pflegeschule',art:'die',en:'Nursing school',ex:'Ich gehe in die Pflegeschule.'},
+      {de:'die Schichtarbeit',art:'die',en:'Shift work',ex:'Schichtarbeit ist anstrengend.'},
+      {de:'die Stationsleitung',art:'die',en:'Ward manager',ex:'Die Stationsleitung ist streng.'},
+      {de:'die Visite',art:'die',en:"Doctor's round",ex:'Die Visite ist um 8 Uhr.'},
+      {de:'die Krankenakte',art:'die',en:'Patient file',ex:'Die Krankenakte ist wichtig.'},
+      {de:'die Notaufnahme',art:'die',en:'Emergency room',ex:'Der Patient kommt aus der Notaufnahme.'},
+      {de:'der Nachtdienst',art:'der',en:'Night shift',ex:'Ich habe Nachtdienst.'},
+      {de:'die Bewerbung',art:'die',en:'Application',ex:'Meine Bewerbung war erfolgreich.'},
+    ],
+  },
+};
+// Fill missing levels with A1 data
+['A2','B1'].forEach(l=>{ vocab[l]=vocab.A1; });
+
+function loadVocab(){
+  const level=document.getElementById('vocabLevel').value;
+  const cat=document.getElementById('vocabCat').value;
+  const data=(vocab[level]&&vocab[level][cat])||(vocab.A1[cat]||vocab.A1.medical);
+  const grid=document.getElementById('vocabGrid');
+  grid.innerHTML='';
+  [...data].sort(()=>Math.random()-0.5).forEach(w=>{
+    const card=document.createElement('div');
+    card.className='vocab-card';
+    card.onclick=()=>card.classList.toggle('flipped');
+    const artColor=w.art==='der'?'#4ECDC4':w.art==='die'?'#FF6B9D':'#FFD93D';
+    const artLabel=w.art==='der'?'🔵 der (masc.)':w.art==='die'?'🔴 die (fem.)':'⚪ das (neut.)';
+    card.innerHTML=`<div class="vocab-front"><div class="vocab-german">${w.de}</div><div class="vocab-article" style="color:${artColor}">${artLabel}</div><div class="flip-hint">👆 Tap to translate</div></div><div class="vocab-back"><div class="vocab-english">🇬🇧 ${w.en}</div><div style="color:#A855F7;font-size:0.75rem;font-weight:700;margin:4px 0">🇮🇳 Hindi tip: practice daily!</div><div class="vocab-example">📝 ${w.ex}</div><div class="flip-hint">👆 Tap to flip back</div></div>`;
+    grid.appendChild(card);
+  });
+}
+loadVocab();
+
+// ── MOCK INTERVIEW ──
+const questions=[
+  "Guten Tag! Bitte stellen Sie sich vor. Wie heißen Sie und woher kommen Sie?",
+  "Warum möchten Sie Krankenpfleger werden?",
+  "Warum haben Sie sich bei uns beworben?",
+  "Was sind Ihre größten Stärken?",
+  "Was sind Ihre Schwächen?",
+  "Wie gehen Sie mit Stress um?",
+  "Warum haben Sie Deutsch gelernt?",
+  "Was wissen Sie über die Pflegeausbildung in Deutschland?",
+  "Wo sehen Sie sich in 5 Jahren?",
+  "Haben Sie noch Fragen an uns?",
+];
+const feedback=[
+  "Sehr gut! 👍 Ihre Vorstellung war klar. Tipp: Immer lächeln und Augenkontakt halten!",
+  "Wunderbar! ❤️ Sie zeigen echte Leidenschaft. Denken Sie daran, konkrete Beispiele zu nennen.",
+  "Gut gemacht! 💼 Recherchieren Sie vorher über das Krankenhaus für eine noch bessere Antwort.",
+  "Ausgezeichnet! ⭐ Stärken mit Beispielen zu belegen macht einen sehr guten Eindruck.",
+  "Sehr ehrlich! 💪 Gut, dass Sie zeigen, wie Sie an Ihrer Schwäche arbeiten.",
+  "Perfekt! 🧘 Konkrete Strategien zu nennen zeigt Reife und Professionalität.",
+  "Beeindruckend! 🇩🇪 B2 in 18 Monaten ist eine großartige Leistung – erwähnen Sie das immer!",
+  "Sehr informiert! 📚 Gute Vorbereitung ist der Schlüssel zum Erfolg.",
+  "Hervorragend! 🚀 Ambitionen zu zeigen ist sehr positiv für den Arbeitgeber.",
+  "Perfekt! 🎉 Das Interview ist beendet. Vergessen Sie nicht: 'Vielen Dank für das Gespräch!'",
+];
+
+let qIndex=0, active=false;
+function startInterview(){
+  active=true; qIndex=0;
+  const c=document.getElementById('interviewMessages');
+  c.innerHTML='';
+  addMsg('interviewMessages','bot','🎤 Das Interview beginnt jetzt!<br><br>Ich bin Frau Müller. Bitte antworten Sie auf Deutsch. Nach jeder Antwort gebe ich Ihnen Feedback.<br><br>Bereit? Los geht\'s! 😊','var(--orange)');
+  setTimeout(()=>{addMsg('interviewMessages','bot',`<b>Frage 1/${questions.length}:</b><br><br>${questions[0]}`, 'var(--orange)');},800);
+}
+function sendAnswer(){
+  if(!active){addMsg('interviewMessages','bot','⚠️ Bitte klicken Sie zuerst auf "Start Interview"!','var(--orange)');return;}
+  const inp=document.getElementById('interviewInput');
+  const text=inp.value.trim(); if(!text)return;
+  inp.value='';
+  addMsg('interviewMessages','user',text);
+  addTyping('interviewMessages');
+  setTimeout(()=>{
+    removeTyping('interviewMessages');
+    const fb=feedback[qIndex]||'Sehr gut! Weiter so! 👍';
+    addMsg('interviewMessages','bot',`<b>Feedback:</b><br>${fb}<br><br><b>⭐ Rating: ${['⭐⭐⭐','⭐⭐⭐⭐','⭐⭐⭐⭐⭐'][Math.floor(Math.random()*3)]}</b>`,'var(--orange)');
+    qIndex++;
+    if(qIndex<questions.length){
+      setTimeout(()=>{addMsg('interviewMessages','bot',`<b>Frage ${qIndex+1}/${questions.length}:</b><br><br>${questions[qIndex]}`, 'var(--orange)');},1000);
+    } else {
+      setTimeout(()=>{addMsg('interviewMessages','bot','🎉 <b>Interview beendet!</b><br><br>Herzlichen Glückwunsch Aakash! Sie haben alle Fragen beantwortet.<br><br>Denken Sie daran zu sagen:<br><b>"Vielen Dank für das Gespräch. Ich freue mich auf Ihre Rückmeldung!"</b><br><br>Viel Erfolg bei Ihrer echten Bewerbung! 🇩🇪💪', 'var(--orange)');active=false;},1000);
+    }
+  },800);
+}
+</script>
+</body>
+</html>
